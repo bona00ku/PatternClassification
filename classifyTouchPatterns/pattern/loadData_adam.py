@@ -59,22 +59,21 @@ def make3Ddata(filename,label,timesteps):
     
     # transpose final(len(data),channels,rows,cols) data
     # to (channels,len(data),rows,cols)
-    final= np.transpose(final,[1,0,2,3])
     #print('transpose final shape,data: ',np.shape(a),a)
+    ret = []
+    for i in range(len(data)-timesteps+1):
+        ret.append(final[i:i+timesteps])
+    ret= np.transpose(ret,[0,2,1,3,4])
+    print('ret shape',np.shape(ret))
     
-    ret = [[] for i in range(nb_sensors)]
-    for ch in range(nb_sensors):
-        for i in range(len(data)-timesteps+1):
-            ret[ch].append(final[ch][i:i+timesteps])
-   
     y = label* np.ones(len(ret))
     ret = np.asarray(ret)
     y = np.asarray(y)
-    print('4d data,label shape: ',np.shape(ret),np.shape(y),'\n')
+    #print('4d data,label shape: ',np.shape(ret),np.shape(y),'\n')
     #print('return prs: ',ret[2])
     return ret,y
 
-a= make3Ddata('simple3.csv',1,3)
+#a= make3Ddata('simple3.csv',1,3)
 
 def load_data():
     classes = ['petcheat','petting']
@@ -94,7 +93,6 @@ def load_data():
         for person in range(len(people)):
             #print("> Load 3d data " + classes[i] +people[person] + " with label " + str(i))
             data,label_array = make3Ddata(classes[i]+people[person]+'.csv',i,timesteps)
-            
             train_size = int(len(data)*0.7)
             test_size = len(data)-train_size
             tot_train += train_size
@@ -118,7 +116,7 @@ def load_data():
 
 def build_lstm(nb_classes):
     timesteps = 10
-    input_shape = (timesteps,4,9,5)
+    input_shape = (4,timesteps,9,5)
     
     model = Sequential()
     model.add(LSTM(64,return_sequences = False,data_format =  'channels_first',
@@ -135,7 +133,7 @@ def build_cnn(nb_classes):
     pool_size = (1,2,2)
     timesteps =10
     #input_shape = (timesteps,nb_sensors,rows,cols)
-    input_shape = (timesteps,4,9,5)
+    input_shape = (4,timesteps,9,5)
     
     model = Sequential()
     #1st layer group
@@ -227,8 +225,8 @@ def run():
     print("> Compile time :",time.time()-start)
     
     start = time.time()
-    #model.fit(trainX, trainY, epochs = 100,verbose=1,
-    #       validation_data=(testX,testY))
+    model.fit(trainX, trainY, epochs = 100,verbose=1,
+           validation_data=(testX,testY))
     
     print(">>Fitting takes time: ",time.time()-start)
     score = model.evaluate (testX, testY, verbose = 0)
@@ -237,5 +235,5 @@ def run():
 
     save_model(model,"outputCNN2")
 
-#run()
+run()
 

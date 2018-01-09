@@ -59,9 +59,9 @@ def make3Ddata(filename,label):
     for i in range((len(final)-timesteps+1)):
         ret.append(final[i:i+timesteps+1])
         
-    ret = np.asarray(ret)
     print('return shape,data ',np.shape(ret),ret)
     y = label* np.ones(len(ret))
+    ret = np.asarray(ret)
     y = np.asarray(y)
     #print('4d data,label shape: ',np.shape(ret),np.shape(y))
     return ret,y
