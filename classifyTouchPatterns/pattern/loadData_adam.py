@@ -4,6 +4,7 @@ from keras.models import Sequential
 from keras.layers import Activation,Dense,Dropout,Flatten
 from keras.layers.convolutional import Conv2D,MaxPooling2D
 from keras.layers.convolutional import Conv3D,MaxPooling3D
+from keras.layers.recurrent import LSTM
 from keras.utils import np_utils
 from keras.models import model_from_json
 
@@ -106,8 +107,20 @@ def load_data():
     #print('Y_test: ' ,Y_test)
     return X_train,X_test,Y_train,Y_test
 
+def build_lstm(nb_classes):
+    timesteps = 10
+    input_shape = (timesteps,4,9,5)
+    
+    model = Sequential()
+    model.add(LSTM(64,return_sequences = False,data_format =  'channels_first',
+        input_shape = input_shape,
+                dropout = 0.5))
+    model.add(Dense(256,activation = 'relu'))
+    model.add(Dropout(0.5))
+    model.add(Dense(nb_classes,activation = 'softmax'))
+    return model
 
-def build_3d_model(nb_classes):
+def build_cnn(nb_classes):
     #kernal_size = (depth,row,col)
     kernal_size = (4,3,3)
     pool_size = (1,2,2)
@@ -117,31 +130,35 @@ def build_3d_model(nb_classes):
     
     model = Sequential()
     #1st layer group
-    model.add(Conv3D(64,kernal_size, name = 'conv1',
+    model.add(Conv3D(32,kernal_size, name = 'conv1',
                 activation = 'relu', input_shape = input_shape,
                 strides = (1,1,1), data_format = 'channels_first',
                 padding = 'same'))
     model.add(MaxPooling3D(padding = 'valid',pool_size=pool_size,
               strides = (1,2,2),data_format = 'channels_first',name='pool1'))
     
-    model.add(Dropout(0.25))
+    #model.add(Dropout(0.25))
     #2nd layer group
-    model.add(Conv3D(128,kernal_size,strides = (1,1,1),
+    model.add(Conv3D(64,kernal_size,strides = (1,1,1),
         data_format = 'channels_first',input_shape=input_shape,
         activation='relu', padding = 'same', name = 'conv2'))
     model.add(MaxPooling3D(pool_size=pool_size,strides = (1,2,2),
               padding = 'valid',data_format = 'channels_first',name='pool2'))
     
-    model.add(Dropout(0.25))
+    #model.add(Dropout(0.25))
     #3rd layer group
-    model.add(Conv3D(256,kernal_size,strides = (1,1,1),
+    model.add(Conv3D(128,kernal_size,strides = (1,1,1),
         data_format = 'channels_first',input_shape=input_shape,
-        activation='relu', padding = 'same', name = 'conv3'))
+        activation='relu', padding = 'same', name = 'conv3a'))
     
-    #model.add(MaxPooling3D(pool_size=pool_size,strides = (1,2,2),
-    #          padding = 'same',name='pool3'))
+    model.add(Conv3D(128,kernal_size,strides = (1,1,1),
+        data_format = 'channels_first',input_shape=input_shape,
+        activation='relu', padding = 'same', name = 'conv3b'))
     
-    model.add(Dropout(0.25))
+    model.add(MaxPooling3D(pool_size=pool_size,strides = (1,2,2),
+              padding = 'same',name='pool3'))
+    
+    #model.add(Dropout(0.25))
     #FC layers
     model.add(Flatten())
     
@@ -151,15 +168,6 @@ def build_3d_model(nb_classes):
     model.add(Dense(nb_classes,activation='relu',name='fc2'))
     model.add(Dropout(0.5))
     
-    print(model.summary())
-        
-    start = time.time()
-
-    model.compile(loss='categorical_crossentropy',
-                    optimizer='adadelta',
-                    metrics=['accuracy'])
-    
-    print("> Compile time :",time.time()-start)
     return model
 
 def save_model(model,f_output):
@@ -197,7 +205,17 @@ def run():
     trainY = np_utils.to_categorical(trainY,nb_classes)
     testY = np_utils.to_categorical(testY,nb_classes)
 
-    model = build_3d_model(nb_classes)
+    model = build_cnn(nb_classes)
+    #model = build_lstm(nb_classes)
+    print(model.summary())
+        
+    start = time.time()
+
+    model.compile(loss='categorical_crossentropy',
+                    optimizer='adadelta',
+                    metrics=['accuracy'])
+    
+    print("> Compile time :",time.time()-start)
     
     start = time.time()
     model.fit(trainX,trainY,epochs = 100,verbose=1,
@@ -208,7 +226,7 @@ def run():
     print('Test score: ', score[0])
     print('Test accuracy: ',score[1])
 
-    save_model(model,"output1")
+    save_model(model,"outputCNN2")
 
 run()
 
