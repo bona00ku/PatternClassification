@@ -1,4 +1,5 @@
-#keras version 2.1.2
+# keras version 2.1.2
+# test file
 import numpy as np
 from keras.models import Sequential
 from keras.layers import Activation,Dense,Dropout,Flatten
@@ -18,20 +19,17 @@ def make3Ddata(filename,label):
     rows = 9
     cols = 5
     nb_sensors = 4
-    timesteps = 3
+    timesteps = 2
     num_data = 52
     
     with open(filename) as f:
         lines = (line for line in f if not line.startswith('#'))
         data = np.loadtxt(lines,delimiter = ',')
-    #data = np.loadtxt(filename,delimiter=',')
-    size = int(len(data)*0.5)
-    data = data[:size]
-    print('raw data shape: ',np.shape(data))    
-    result =np.zeros((nb_sensors,rows,cols))
-    final = []
-    ret = []
+    #print('raw data shape: ',np.shape(data))    
+   
+    final=[]
     for i in range(len(data)):
+        result =np.zeros((nb_sensors,rows,cols))
         for ch in range(1,nb_sensors):
             for k in range(13):
                 if(k<5):
@@ -56,14 +54,16 @@ def make3Ddata(filename,label):
                         result[ch][row][4] = data[i][ch*13+k]
         final.append(result)
     print('3d data shape: ',np.shape(final))
-    #print('final',final)
-    for i in range(len(final)-timesteps+1):
-        ret.append(final[i:i+timesteps])
-    
-    y = label* np.ones(len(ret))
+    print('final',final)
+    ret =[] 
+    for i in range((len(final)-timesteps+1)):
+        ret.append(final[i:i+timesteps+1])
+        
     ret = np.asarray(ret)
+    print('return shape,data ',np.shape(ret),ret)
+    y = label* np.ones(len(ret))
     y = np.asarray(y)
-    print('4d data,label shape: ',np.shape(ret),np.shape(y))
+    #print('4d data,label shape: ',np.shape(ret),np.shape(y))
     return ret,y
 
 
@@ -224,6 +224,6 @@ def build_model(timesteps,num_data,depth):
     model.fit(X_train,Y_train,epochs = 100,verbose=1,
               validation_data=(X_test,Y_test))
 
-#a = make3Ddata("simple3.csv",1)
+a = make3Ddata("simple3.csv",1)
 #trainX,testX,trainY,testY=load_data_3d('output.csv')
-build_3d_model()
+#build_3d_model()

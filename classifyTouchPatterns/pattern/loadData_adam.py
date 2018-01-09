@@ -29,10 +29,9 @@ def make3Ddata(filename,label,timesteps):
     #size = int(len(data)*0.5)
     #data = data[:size]
     #print('trimed raw data shape: ',np.shape(data))    
-    result =np.zeros((nb_sensors,rows,cols))
     final = []
-    ret = []
     for i in range(len(data)):
+        result =np.zeros((nb_sensors,rows,cols))
         for ch in range(1,nb_sensors):
             for k in range(13):
                 if(k<5):
@@ -57,19 +56,29 @@ def make3Ddata(filename,label,timesteps):
                         result[ch][row][4] = data[i][ch*13+k]
         final.append(result)
     #print('3d data shape: ',np.shape(final))
-    for i in range(len(final)-timesteps+1):
-        ret.append(final[i:i+timesteps])
     
+    # transpose final(len(data),channels,rows,cols) data
+    # to (channels,len(data),rows,cols)
+    final= np.transpose(final,[1,0,2,3])
+    #print('transpose final shape,data: ',np.shape(a),a)
+    
+    ret = [[] for i in range(nb_sensors)]
+    for ch in range(nb_sensors):
+        for i in range(len(data)-timesteps+1):
+            ret[ch].append(final[ch][i:i+timesteps])
+   
     y = label* np.ones(len(ret))
     ret = np.asarray(ret)
     y = np.asarray(y)
-    #print('4d data,label shape: ',np.shape(ret),np.shape(y),'\n')
+    print('4d data,label shape: ',np.shape(ret),np.shape(y),'\n')
+    #print('return prs: ',ret[2])
     return ret,y
 
+a= make3Ddata('simple3.csv',1,3)
 
 def load_data():
     classes = ['petcheat','petting']
-    people = ['jang','lee']
+    people = ['jang','lee','do','choi']
     
     num_data = 52
     timesteps= 10  #0.5s data with collection freq 20hz
@@ -218,8 +227,8 @@ def run():
     print("> Compile time :",time.time()-start)
     
     start = time.time()
-    model.fit(trainX,trainY,epochs = 100,verbose=1,
-           validation_data=(testX,testY))
+    #model.fit(trainX, trainY, epochs = 100,verbose=1,
+    #       validation_data=(testX,testY))
     
     print(">>Fitting takes time: ",time.time()-start)
     score = model.evaluate (testX, testY, verbose = 0)
@@ -228,5 +237,5 @@ def run():
 
     save_model(model,"outputCNN2")
 
-run()
+#run()
 
