@@ -13,6 +13,22 @@ import time
 import csv
 import h5py
 
+def make2Ddata(filename,label,timesteps):
+
+    with open(filename) as f:
+        lines = (line for line in f if not line.startswith('#'))
+        data = np.loadtxt(lines,delimiter= ',')
+
+    ret = []
+    for i in range(len(data) - timesteps +1):
+        ret.append(data[i:i+timesteps])
+    y = label * np.ones((len(ret)))
+    ret = np.asarray(ret)
+    y = np.asarray(y)
+
+    return ret,y
+
+
 def make3Ddata(filename,label,timesteps):
     #the function converts raw data to spatial format(nb_sensors,rows,cols)
     
@@ -75,6 +91,8 @@ def make3Ddata(filename,label,timesteps):
 
 #a= make3Ddata('simple3.csv',1,3)
 
+
+    
 def load_data():
     classes = ['petcheat','petting']
     people = ['jang','lee','do','choi']
@@ -92,7 +110,8 @@ def load_data():
     for i in range(len(classes)):
         for person in range(len(people)):
             #print("> Load 3d data " + classes[i] +people[person] + " with label " + str(i))
-            data,label_array = make3Ddata(classes[i]+people[person]+'.csv',i,timesteps)
+            #data,label_array = make3Ddata(classes[i]+people[person]+'.csv',i,timesteps)
+            data,label_array = make2Ddata(classes[i]+people[person]+'.csv',i,timesteps)
             train_size = int(len(data)*0.7)
             test_size = len(data)-train_size
             tot_train += train_size
@@ -116,12 +135,11 @@ def load_data():
 
 def build_lstm(nb_classes):
     timesteps = 10
-    input_shape = (4,timesteps,9,5)
+    input_shape = (timesteps,52)
     
     model = Sequential()
-    model.add(LSTM(64,return_sequences = False,data_format =  'channels_first',
-        input_shape = input_shape,
-                dropout = 0.5))
+    model.add(LSTM(64,return_sequences = False,
+                input_shape = input_shape, dropout = 0.5))
     model.add(Dense(256,activation = 'relu'))
     model.add(Dropout(0.5))
     model.add(Dense(nb_classes,activation = 'softmax'))
@@ -212,8 +230,8 @@ def run():
     trainY = np_utils.to_categorical(trainY,nb_classes)
     testY = np_utils.to_categorical(testY,nb_classes)
 
-    model = build_cnn(nb_classes)
-    #model = build_lstm(nb_classes)
+    #model = build_cnn(nb_classes)
+    model = build_lstm(nb_classes)
     print(model.summary())
         
     start = time.time()
