@@ -187,7 +187,6 @@ def build_3d_model():
     model.add(Dropout(0.5))
     
     model.add(Dense(nb_classes,activation='relu',name='fc2'))
-    model.add(Dropout(0.5))
     
     print(model.summary())
     return model

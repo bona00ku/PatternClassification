@@ -42,8 +42,6 @@ def make3Ddata(filename,label,timesteps):
         data = np.loadtxt(lines,delimiter = ',')
     #data = np.loadtxt(filename,delimiter=',')
     #print('raw data shape: ',np.shape(data))    
-    #size = int(len(data)*0.5)
-    #data = data[:size]
     #print('trimed raw data shape: ',np.shape(data))    
     final = []
     for i in range(len(data)):
@@ -71,7 +69,8 @@ def make3Ddata(filename,label,timesteps):
                     else:
                         result[ch][row][4] = data[i][ch*13+k]
         final.append(result)
-    #print('3d data shape: ',np.shape(final))
+    print('3d data shape: ',np.shape(final))
+    print('final:',final)
     
     # transpose final(len(data),channels,rows,cols) data
     # to (channels,len(data),rows,cols)
@@ -81,7 +80,7 @@ def make3Ddata(filename,label,timesteps):
         ret.append(final[i:i+timesteps])
     ret= np.transpose(ret,[0,2,1,3,4])
     print('ret shape',np.shape(ret))
-    
+    print('ret[0]: ', ret[0]) 
     y = label* np.ones(len(ret))
     ret = np.asarray(ret)
     y = np.asarray(y)
@@ -99,10 +98,6 @@ def load_data():
     
     num_data = 52
     timesteps= 10  #0.5s data with collection freq 20hz
-    x=[]
-    y=[]
-    tot_train = 0
-    tot_test = 0
     X_train=[]
     X_test=[]
     Y_train=[]
@@ -114,8 +109,6 @@ def load_data():
             data,label_array = make2Ddata(classes[i]+people[person]+'.csv',i,timesteps)
             train_size = int(len(data)*0.7)
             test_size = len(data)-train_size
-            tot_train += train_size
-            tot_test += test_size
 
             if (i==0 and person == 0):
                 X_train,X_test = np.array(data[0:train_size]),np.array(data[train_size:]) 
@@ -126,7 +119,6 @@ def load_data():
                 Y_train = np.concatenate((Y_train,label_array[0:train_size]),axis=0)
                 Y_test = np.concatenate((Y_test,label_array[train_size:]),axis=0)
             
-    #print("total data, train, test length : ", tot_train + tot_test, tot_train, tot_test ) 
     #split to train and testing
     print('trainx,testx,trainy,test y shape',np.shape(X_train),np.shape(X_test),np.shape(Y_train),np.shape(Y_test)) 
     #print('Y_train: ' ,Y_train)
@@ -195,14 +187,17 @@ def build_cnn(nb_classes):
     
     return model
 
-def save_model(model,f_output):
-    model_json = model.to_json()
-    with open(f_output + ".json","w") as json_file:
-        json_file.write(model_json)
+def save_model(model):
+    ans = raw_input("Save model? Enter 'y' or 'n'")
+    if(ans == 'y'):
+        f_output =raw_input("Enter file name: ")
+        model_json = model.to_json()
+        with open(f_output + ".json","w") as json_file:
+            json_file.write(model_json)
 
-    #serialize weights to HDF5
-    model.save_weights(f_output + ".h5")
-    print(" saved model at disk")
+        #serialize weights to HDF5
+        model.save_weights(f_output + ".h5")
+        print(" saved model at disk")
 
 
 def load_model(filename):
@@ -243,15 +238,15 @@ def run():
     print("> Compile time :",time.time()-start)
     
     start = time.time()
-    model.fit(trainX, trainY, epochs = 100,verbose=1,
-           validation_data=(testX,testY))
+    #model.fit(trainX, trainY, epochs = 100,verbose=1,
+    #       validation_data=(testX,testY))
     
     print(">>Fitting takes time: ",time.time()-start)
-    score = model.evaluate (testX, testY, verbose = 0)
-    print('Test score: ', score[0])
-    print('Test accuracy: ',score[1])
+    #score = model.evaluate (testX, testY, verbose = 0)
+    #print('Test score: ', score[0])
+    #print('Test accuracy: ',score[1])
 
-    save_model(model,"outputCNN2")
+    save_model(model)
 
 run()
 
