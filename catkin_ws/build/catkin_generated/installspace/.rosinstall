@@ -1,0 +1,2 @@
+- setup-file:
+    local-name: /home/hjku/workspace/3rdparty/catkin_ws/install/setup.sh

@@ -91,6 +91,7 @@ def make3Ddata(filename,label,timesteps):
 #a= make3Ddata('simple3.csv',1,3)
 
 
+
     
 def load_data():
     classes = ['petcheat','petting']
@@ -102,6 +103,9 @@ def load_data():
     X_test=[]
     Y_train=[]
     Y_test =[]
+    X_val = []
+    Y_val = []
+
     for i in range(len(classes)):
         for person in range(len(people)):
             #print("> Load 3d data " + classes[i] +people[person] + " with label " + str(i))
@@ -137,6 +141,18 @@ def build_lstm(nb_classes):
     model.add(Dense(nb_classes,activation = 'softmax'))
     return model
 
+def build_lstm2(nb_classes):
+    timesteps = 10 
+    input_shape = (timesteps,52)
+
+    model = Sequential()
+    model.add(LSTM(64,return_sequences = True,
+                input_shape = input_shape,dropout = 0.5))
+    model.add(Dense(256,activation = 'relu'))
+    model.add(Dropout(0.5))
+    model.add(Dense(nb_classes,activation = 'softmax'))
+    return model
+
 def build_cnn(nb_classes):
     #kernal_size = (depth,row,col)
     kernal_size = (4,3,3)
@@ -154,36 +170,30 @@ def build_cnn(nb_classes):
     model.add(MaxPooling3D(padding = 'valid',pool_size=pool_size,
               strides = (1,2,2),data_format = 'channels_first',name='pool1'))
     
-    #model.add(Dropout(0.25))
     #2nd layer group
     model.add(Conv3D(64,kernal_size,strides = (1,1,1),
         data_format = 'channels_first',input_shape=input_shape,
         activation='relu', padding = 'same', name = 'conv2'))
-    model.add(MaxPooling3D(pool_size=pool_size,strides = (1,2,2),
-              padding = 'valid',data_format = 'channels_first',name='pool2'))
     
-    #model.add(Dropout(0.25))
     #3rd layer group
     model.add(Conv3D(128,kernal_size,strides = (1,1,1),
         data_format = 'channels_first',input_shape=input_shape,
-        activation='relu', padding = 'same', name = 'conv3a'))
+        activation='relu', padding = 'same', name = 'conv3'))
     
-    model.add(Conv3D(128,kernal_size,strides = (1,1,1),
-        data_format = 'channels_first',input_shape=input_shape,
-        activation='relu', padding = 'same', name = 'conv3b'))
-    
-    model.add(MaxPooling3D(pool_size=pool_size,strides = (1,2,2),
+    model.add(MaxPooling3D(pool_size=pool_size,strides = (2,2,2),
               padding = 'same',name='pool3'))
     
-    #model.add(Dropout(0.25))
+    model.add(Dropout(0.25))
     #FC layers
     model.add(Flatten())
-    
+    #512->d(0.5)->256->d(0.5) => 0.966
+    #256 ->0.5->128->0.5 =? 0.9505
+    model.add(Dense(512,activation='relu',name='fc1'))
+    model.add(Dropout(0.5))
     model.add(Dense(256,activation='relu',name='fc1'))
     model.add(Dropout(0.5))
     
     model.add(Dense(nb_classes,activation='relu',name='fc2'))
-    model.add(Dropout(0.5))
     
     return model
 
@@ -198,11 +208,12 @@ def save_model(model):
         #serialize weights to HDF5
         model.save_weights(f_output + ".h5")
         print(" saved model at disk")
-
-
-def load_model(filename):
+        
+def load_model():
     #load json and create model
-    json_file = open(filename + 'json','r')
+    filename = raw_input("Enter filename:")
+
+    json_file = open(filename + '.json','r')
     loaded_model_json = json_file.read()
     json_file.close()
     loaded_model = model_from_json(loaded_model_json)
@@ -211,11 +222,13 @@ def load_model(filename):
     loaded_model.load_weights(filename + '.h5')
     print("Loaded model from disk")
 
-    loded_model.compile(loss = 'categorical_crossentropy', optimizer = 'rmsprop', metrics = ['accuracy'])
-    
-#a = make3Ddata("simple3.csv",1)
+    #loded_model.compile(loss = 'categorical_crossentropy', optimizer = 'rmsprop', metrics = ['accuracy'])
+     
+    return loaded_model
 
-def run():
+
+
+def train():
     nb_classes = 2
     
     trainX,testX,trainY,testY = load_data()
@@ -224,29 +237,117 @@ def run():
     testX = testX.astype('int16')
     trainY = np_utils.to_categorical(trainY,nb_classes)
     testY = np_utils.to_categorical(testY,nb_classes)
-
+    
     #model = build_cnn(nb_classes)
-    model = build_lstm(nb_classes)
+    #model = build_lstm2(nb_classes)
+    #model = build_lstm(nb_classes)
+    model = load_model()
     print(model.summary())
         
-    start = time.time()
+    #start = time.time()
 
     model.compile(loss='categorical_crossentropy',
                     optimizer='adadelta',
                     metrics=['accuracy'])
     
-    print("> Compile time :",time.time()-start)
+    model.predict(testX)
+    #print("> Compile time :",time.time()-start)
     
-    start = time.time()
+    #start = time.time()
     #model.fit(trainX, trainY, epochs = 100,verbose=1,
     #       validation_data=(testX,testY))
     
-    print(">>Fitting takes time: ",time.time()-start)
+    #print(">>Fitting takes time: ",time.time()-start)
     #score = model.evaluate (testX, testY, verbose = 0)
     #print('Test score: ', score[0])
     #print('Test accuracy: ',score[1])
+    
+    #save_model(model)
+train()
 
-    save_model(model)
+def realTime():
+    timesteps = 10
+    model = load_model()
+    
+    ser = serial.Serial("/dev/ttyACM2",115200)
+    data = []
+    if(not ser.isOpen()):
+        ser.Open()
+    f = open("test.csv","w+")
+    result = csv.writer(f,delimiter = ',',dialect = 'excel-tab')
+    ser.write('\x11')
+    ser.wrtie('\x12')
+    try:
+        while True:
 
-run()
+            oneData = ser.readline()
+            if(len(oneData)!=82):
+                continue
+            result.writerow(oneData)
+            oneData = oneData[2:-2]
+            single = []
+            for j in range(4):
+                for i in range(26):
+                    if(j == 0 or j ==1):
+                        single.append(struct.unpack(">b",oneData[13*j+i])[0])
+                    else:
+                        single.append(struct.unpack(">h",
+                            oneData[13*j+2*i]+oneData[13*j+2*i+1])[0])
+            data.append(single)
+            if (len(data)==timesteps):
+                a = shape(data)
+                print(a)
+                return a
+                model.predict(shape(data))
+            time.sleep(0.1)
+    except KeyboardInterrupt:
+        print("Exit")
+        pass
+
+def shape(data):
+    #data: 1*52 raw data
+    rows = 9
+    cols = 5
+    nb_sensors = 4
+    num_data = 52
+    
+    final = []
+    for i in range(len(data)):
+        result =np.zeros((nb_sensors,rows,cols))
+        for ch in range(1,nb_sensors):
+            for k in range(13):
+                if(k<5):
+                    if(ch == 1): 
+                        result[ch-1][k*2][2] = data[i][k*2]
+                        result[ch][k*2][2] = data[i][k*2+1]
+                    else:
+                        result[ch][k*2][2] = data[i][ch*13+k]
+                elif(k<9):
+                    row = (k-5)*2+1
+                    if(ch==1):
+                        result[ch-1][row][0] = data[i][k*2]
+                        result[ch][row][0] = data[i][k*2+1]
+                    else:
+                        result[ch][row][0] = data[i][ch*13+k]
+                else:
+                    row = (k-9)*2+1
+                    if(ch==1):
+                        result[ch-1][row][4] = data[i][k*2]
+                        result[ch][row][4] = data[i][k*2+1]
+                    else:
+                        result[ch][row][4] = data[i][ch*13+k]
+        final.append(result)
+    print('3d data shape: ',np.shape(final))
+    print('final:',final)
+    ret=[final] 
+    # transpose final(len(data),channels,rows,cols) data
+    # to (channels,len(data),rows,cols)
+    #print('transpose final shape,data: ',np.shape(a),a)
+    ret = np.transpose(ret,[0,2,1,3,4])
+    ret = np.asarray(ret)
+    return ret
+
+    
+train()
+load_model()
 
